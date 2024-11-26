@@ -23,6 +23,9 @@ from analysis.views import *
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('analysis/', include('analysis.urls')),
+    path('member/', include('member.urls')),
+    path('dj/', include('dj_rest_auth.urls')),
+    path('dj/registration/', include('dj_rest_auth.registration.urls')),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
