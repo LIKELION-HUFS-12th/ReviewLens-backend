@@ -25,7 +25,6 @@ if os.path.exists(font_path):
 else:
     print(f"Font not found at {font_path}. Using default font.")
 
-# Load file from the given file path
 def load_file(file_path):
     text_data = pd.read_excel(file_path)
     product_names = text_data['상품명'].astype(str).tolist()
@@ -33,7 +32,6 @@ def load_file(file_path):
     review_list = reviews.astype(str).tolist()
     return review_list, product_names
 
-# Preprocess the reviews
 def preprocess(review_list):
     print("파일 로딩 완료. 데이터 전처리 중...")
     stopwords = ['아', '하다', '휴', '아이구', '아이쿠', '아이고', '어', '나', '우리', '저희', '따라', '의해', '을', '를', '에', '의', '가', '으로', '로', '에게', '뿐이다', '의거하여', '근거하여', '입각하여', '기준으로', '예하면', '예를 들면', '예를 들자면', '저', '소인', '소생', '저희', '지말고', '하지마', '하지마라', '다른', '물론', '또한', '그리고', '비길수 없다', '해서는 안된다', '뿐만 아니라', '만이 아니다', '만은 아니다', '막론하고', '관계없이', '그치지 않다', '그러나', '그런데', '하지만', '든간에', '논하지 않다', '따지지 않다', '설사', '비록', '더라도', '아니면', '만 못하다', '하는 편이 낫다', '불문하고', '향하여', '향해서', '향하다', '쪽으로', '틈타', '이용하여', '타다', '오르다', '제외하고', '이 외에', '이 밖에', '하여야', '비로소', '한다면 몰라도', '외에도', '이곳', '여기', '부터', '기점으로', '따라서', '할 생각이다', '하려고하다', '이리하여', '그리하여', '그렇게 함으로써', '하지만', '일때', '할때', '앞에서', '중에서', '보는데서', '으로써', '로써', '까지', '해야한다', '일것이다', '반드시', '할줄알다', '할수있다', '할수있어', '임에 틀림없다', '한다면', '등', '등등', '제', '겨우', '단지', '다만', '할뿐', '딩동', '댕그', '대해서', '대하여', '대하면', '훨씬', '얼마나', '얼마만큼', '얼마큼', '남짓', '여', '얼마간', '약간', '다소', '좀', '조금', '다수', '몇', '얼마', '지만', '하물며', '또한', '그러나', '그렇지만', '하지만', '이외에도', '대해 말하자면', '뿐이다', '다음에', '반대로', '반대로 말하자면', '이와 반대로', '바꾸어서 말하면', '바꾸어서 한다면', '만약', '그렇지않으면']  # 생략된 불용어들
@@ -51,7 +49,6 @@ def preprocess(review_list):
 
     return original_reviews, processed_reviews
 
-# Create test data from reviews
 def create_test_data(preprocessed_reviews, original_reviews, product_names, sample_size=5):
     if sample_size == 'max':
         max_size = len(preprocessed_reviews)
@@ -64,7 +61,6 @@ def create_test_data(preprocessed_reviews, original_reviews, product_names, samp
 
     return preprocessed_reviews_sliced, original_review_list_sliced, product_list_sliced
 
-# Analyze reviews using Clova Studio
 def analyze_reviews_clova_studio(preprocessed_reviews_sliced):
     print("데이터 전처리 완료. 감정 분석 시작...")
     start_time = time.time()
@@ -131,7 +127,6 @@ def analyze_reviews_clova_studio(preprocessed_reviews_sliced):
     print(f"감정 분석 완료. 총 소요 시간: {total_time:.2f}초")
     return result_list
 
-# Process sentiment analysis results
 def process_sentiment_analysis(sentiment_data_list, original_reviews, product_list_test):
     summary = []
 
@@ -174,7 +169,6 @@ def generate_sentiment_wordclouds(summary):
     print("부정적인 리뷰 워드클라우드 생성됨")
     generate_wordcloud(negative_filtered_text, title='Negative Reviews Word Cloud', sentiment='negative', font_path = os.path.join(settings.BASE_DIR, 'analysis', 'fonts', 'NanumGothicCoding.TTF'))
 
-# Generate wordcloud from text
 def generate_wordcloud(text, title='', sentiment='', font_path=''):
     try:
         wordcloud = WordCloud(font_path=font_path, 
@@ -191,22 +185,18 @@ def generate_wordcloud(text, title='', sentiment='', font_path=''):
     except Exception as e:
         print(f"워드클라우드 생성 중 오류 발생: {e}")
 
-# Remove stopwords from text
 def remove_stopwords(text, stopwords):
     pattern = r'\b(?:' + '|'.join(re.escape(word) for word in stopwords) + r')\b'
     return re.sub(pattern, '', text)
 
-# Return list of stopwords for wordcloud
 def wordcloud_stopwords():
     return list(set(['아', '구매했네요', '제가', '좋구', '써보니', '쓰던', '없어서', '없네요', '넘', '앞으로', '다른', 'OOO', '많이', '않아', '같이', '같아요', '전', '것', '않고', '진짜', '좀', '정말', '더', '않아요', '있어', '있습니다', '좋아요', '좋고', '잘', '많이', '너무너무', '원래', '샀는데', '같습니다', '좋다길래', '괜찮아요', '있어요', '사봤어요', '보다', '요건', '그래서', '별로', '따지면', '같구요', '선택했는데적당한것', '하고', '말이죠', '구매', '너무많아서', '바르면', '입니다', '바르고', '광고', '첨에', '엄청', '열심히', '바르다', '생각보단', '요거', '제형', '00', '얼굴에', '너무', '같아요', '없고', '없어요', '좋은거', '해서', '안', '아주', '그냥', '많아', '처음', '들어있는지', '쓰고', '않을거라고', '있음', '들어요', '있고', '수', '제형의', '좋은', '근데', '않을거라고']))
 
-# Load sentiment analysis result file
 def load_result(path):
     with open(path, 'r', encoding='utf-8') as f:
         results = json.load(f)
     return results
 
-# Count total sentiment in the results
 def total_sentiment_count(results):
     sentiment_counts = {'Positive': 0, 'Neutral': 0, 'Negative': 0}
 
@@ -244,7 +234,6 @@ def plot_total_sentiment_pie_chart(sentiment_counts, output_path):
     plt.close()
     print(f"파이차트가 '{output_file}'에 저장되었습니다.")
 
-# Count sentiment for individual products
 def count_for_indiv(results):
     ps_counts = {}
 

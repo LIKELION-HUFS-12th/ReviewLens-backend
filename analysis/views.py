@@ -7,6 +7,26 @@ from django.conf import settings
 from .serializers import FileUploadSerializer
 from .utils import *
 import traceback
+import os
+from django.conf import settings
+import json
+from django.http import JsonResponse
+
+def get_json_results(request, filename):
+    if not filename.endswith('.json'):
+        filename += '.json'
+
+    file_path = os.path.join(settings.BASE_DIR, 'analysis', 'results', filename)
+    print(f"DEBUG: file_path = {file_path}")
+
+    if os.path.exists(file_path):
+        with open(file_path, 'r') as json_file:
+            data = json.load(json_file)
+        return JsonResponse(data, safe=False)
+    else:
+        return JsonResponse({'error': '파일을 찾을 수 없습니다.'}, status=404)
+
+
 
 class FileUploadView(APIView):
     parser_classes = (MultiPartParser, FormParser)
