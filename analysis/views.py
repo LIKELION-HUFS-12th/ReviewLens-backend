@@ -7,9 +7,7 @@ from django.conf import settings
 from .serializers import FileUploadSerializer
 from .utils import *
 import traceback
-import os
 from django.conf import settings
-import json
 from django.http import JsonResponse
 
 def get_json_results(request, filename):
