@@ -1,27 +1,31 @@
-# utils.py
 import os
 import re
 import json
 import pandas as pd
-import requests
+import numpy as np
 import time
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 from django.conf import settings
 from matplotlib import font_manager, rc
-import numpy as np
 import matplotlib
 from django.conf import settings
-matplotlib.use('Agg')  # GUI 백엔드 사용하지 않도록 설정
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
 import torch.nn.functional as F
 from django.conf import settings
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.utils import ImageReader
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfbase import pdfmetrics
+
+matplotlib.use('Agg')  # GUI 백엔드 사용하지 않도록 설정
 
 # 폰트 설정
 font_path = os.path.join(settings.BASE_DIR, 'analysis', 'fonts', 'NGULIM.TTF')  # 폰트 파일 경로
 if os.path.exists(font_path):
-    font_manager.fontManager.addfont(font_path)  # 폰트를 matplotlib에 추가
+    font_manager.fontManager.addfont(font_path)  
     font_name = font_manager.FontProperties(fname=font_path).get_name()
     rc('font', family=font_name)
     print(f"Font '{font_name}' successfully set for matplotlib.")
@@ -73,29 +77,40 @@ def create_test_data(preprocessed_reviews, original_reviews, product_names, samp
     return preprocessed_reviews_sliced, original_review_list_sliced, product_list_sliced
 
 
-def analyze_reviews_with_model(preprocessed_reviews_sliced):
+def analyze_reviews_with_model(preprocessed_reviews_sliced, batch_size=32):
     print("데이터 전처리 완료. 감정 분석 시작...")
     start_time = time.time()
 
     result_list = []
-    for i, review in enumerate(preprocessed_reviews_sliced):
-        progress = (i + 1) / len(preprocessed_reviews_sliced) * 100
-        print(f'전체 {len(preprocessed_reviews_sliced)}개 데이터 중 {i+1}번 째 데이터 {progress:.2f}% 완료')
 
-        inputs = tokenizer(review, return_tensors="pt", padding=True, truncation=True)
+    total_reviews = len(preprocessed_reviews_sliced)
+    for start_idx in range(0, total_reviews, batch_size):
+        end_idx = min(start_idx + batch_size, total_reviews)
+        batch = preprocessed_reviews_sliced[start_idx:end_idx]
+
+        inputs = tokenizer(batch, return_tensors="pt", padding=True, truncation=True).to(device)
+
         with torch.no_grad():
             outputs = model(**inputs)
             logits = outputs.logits
-            probs = F.softmax(logits, dim=-1).squeeze()
-            predicted_class = logits.argmax(dim=-1).item()
+            probs = F.softmax(logits, dim=-1)
+            predicted_classes = logits.argmax(dim=-1).tolist()
 
-        sentiment = label_map[predicted_class]
-        result_list.append({"review": review, "sentiment": sentiment})
+        # 결과 저장
+        for review, predicted_class, prob in zip(batch, predicted_classes, probs):
+            sentiment = label_map[predicted_class]
+            confidence = prob[predicted_class].item()  
+            result_list.append({"review": review, "sentiment": sentiment, "confidence": confidence})
+
+        progress = (end_idx / total_reviews) * 100
+        print(f"전체 {total_reviews}개 데이터 중 {end_idx}개 완료 ({progress:.2f}%)")
 
     end_time = time.time()
     total_time = end_time - start_time
     print(f"감정 분석 완료. 총 소요 시간: {total_time:.2f}초")
+
     return result_list
+
 
 
 def process_sentiment_analysis(sentiment_data_list, original_reviews, product_list_test):
@@ -142,19 +157,30 @@ def generate_sentiment_wordclouds(summary):
 
 def generate_wordcloud(text, title='', sentiment='', font_path=''):
     try:
-        wordcloud = WordCloud(font_path=font_path, 
+        # 워드클라우드 생성
+        wordcloud = WordCloud(font_path=font_path,
                               width=800, height=400, background_color='white').generate(text)
 
-        # 저장 경로 설정 및 폴더 생성
+        import matplotlib.pyplot as plt
+        plt.figure(figsize=(10, 5))
+        plt.imshow(wordcloud, interpolation='bilinear')
+        plt.axis('off') 
+        if title:  
+            plt.title(title, fontsize=16)
+        
         file_dir = os.path.join(settings.MEDIA_ROOT, 'wordcloud')
         if not os.path.exists(file_dir):
             os.makedirs(file_dir)
-        
         file_path = os.path.join(file_dir, f"{sentiment}_wordcloud.png")
-        wordcloud.to_file(file_path)
+        plt.savefig(file_path, bbox_inches='tight', dpi=300)  
+        plt.close()
         print(f"워드클라우드가 '{file_path}'에 저장되었습니다.")
+        return file_path
+    
     except Exception as e:
         print(f"워드클라우드 생성 중 오류 발생: {e}")
+        return None
+
 
 def remove_stopwords(text, stopwords):
     pattern = r'\b(?:' + '|'.join(re.escape(word) for word in stopwords) + r')\b'
@@ -195,7 +221,6 @@ def plot_total_sentiment_pie_chart(sentiment_counts, output_path):
     plt.axis('equal')
     plt.title("Sentiment Analysis Total Result")
 
-    # 저장 경로 설정 및 폴더 생성
     output_dir = os.path.join(settings.MEDIA_ROOT, 'charts')
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -269,3 +294,116 @@ def charts(ps_counts, output_file_prefix):
         plt.savefig(output_file, bbox_inches='tight')
         plt.close(fig)
         print(f"Saved {output_file}")
+        
+        
+
+
+def create_sentiment_report_pdf(output_path, charts_dir, wordcloud_dir, total_chart_path, sentiment_counts):
+    # 한글 폰트 등록
+    font_path = os.path.join(settings.BASE_DIR, 'analysis', 'fonts', 'NanumGothicCoding.TTF')
+    if os.path.exists(font_path):
+        pdfmetrics.registerFont(TTFont('NanumGothic', font_path))
+        font_name = 'NanumGothic'
+    else:
+        font_name = 'Helvetica'
+
+    c = canvas.Canvas(output_path, pagesize=letter)
+    c.setFont(font_name, 12)
+
+    # 첫 번째 페이지: 분석 결과 요약 + 전체 파이 차트
+    c.drawString(30, 750, "Sentiment Analysis Report")
+    c.drawString(30, 735, "------------------------------------------")
+
+    total_reviews = sum(sentiment_counts.values())
+    positive_percent = (sentiment_counts['Positive'] / total_reviews) * 100
+    neutral_percent = (sentiment_counts['Neutral'] / total_reviews) * 100
+    negative_percent = (sentiment_counts['Negative'] / total_reviews) * 100
+
+    c.drawString(30, 710, f"총 {total_reviews}개의 리뷰 분석 결과:")
+    c.drawString(30, 695, f"긍정 리뷰: {sentiment_counts['Positive']}개 ({positive_percent:.2f}%)")
+    c.drawString(30, 680, f"중립 리뷰: {sentiment_counts['Neutral']}개 ({neutral_percent:.2f}%)")
+    c.drawString(30, 665, f"부정 리뷰: {sentiment_counts['Negative']}개 ({negative_percent:.2f}%)")
+    c.drawString(30, 650, "------------------------------------------")
+
+    if os.path.exists(total_chart_path):
+        try:
+            img = ImageReader(total_chart_path)
+            img_width, img_height = img.getSize()
+            aspect_ratio = img_height / img_width
+
+            max_width = 400
+            max_height = max_width * aspect_ratio
+            chart_x_position = 100  
+            chart_y_position = 300 
+
+            c.drawImage(total_chart_path, chart_x_position, chart_y_position, width=max_width, height=max_height)
+        except Exception as e:
+            print(f"전체 감정 비율 파이 차트 추가 중 오류 발생: {e}")
+
+    c.showPage()
+
+    # 두 번째 페이지: 긍정/부정 워드클라우드
+    c.setFont(font_name, 12)
+    c.drawString(30, 750, "Sentiment Analysis Word Clouds")
+    c.drawString(30, 735, "------------------------------------------")
+
+    wordcloud_files = [
+        os.path.join(wordcloud_dir, filename)
+        for filename in os.listdir(wordcloud_dir) if filename.endswith(".png")
+    ]
+
+    y_positions = [450, 150]
+    for idx, wordcloud_path in enumerate(wordcloud_files):
+        try:
+            img = ImageReader(wordcloud_path)
+            img_width, img_height = img.getSize()
+            aspect_ratio = img_height / img_width
+            max_width = 400
+            max_height = max_width * aspect_ratio
+            y_position = y_positions[idx % 2]
+            c.drawImage(wordcloud_path, 100, y_position, width=max_width, height=max_height)
+        except Exception as e:
+            print(f"워드클라우드 추가 중 오류 발생: {e}")
+
+
+    # 세 번째 페이지부터: 개별 제품 차트
+    c.setFont(font_name, 12)
+
+    # 개별 차트 파일 로드
+    individual_chart_files = [
+        os.path.join(charts_dir, filename)
+        for filename in os.listdir(charts_dir) if filename.endswith(".png")
+    ]
+
+
+    page_width, page_height = letter  
+    for chart_path in individual_chart_files:
+        try:
+            c.showPage()
+
+            img = ImageReader(chart_path)
+            img_width, img_height = img.getSize()
+            aspect_ratio = img_height / img_width
+
+            # 이미지 크기 조정 (페이지에 꽉 차게)
+            max_width = page_width - 100  # 양쪽 여백 50씩
+            max_height = page_height - 100  # 위아래 여백 50씩
+            if aspect_ratio > 1:  # 세로가 더 긴 경우
+                scaled_height = max_height
+                scaled_width = scaled_height / aspect_ratio
+            else:  # 가로가 더 긴 경우
+                scaled_width = max_width
+                scaled_height = scaled_width * aspect_ratio
+
+            # 이미지 배치 위치
+            x_position = (page_width - scaled_width) / 2
+            y_position = (page_height - scaled_height) / 2
+
+            # 이미지 추가
+            c.drawImage(chart_path, x_position, y_position, width=scaled_width, height=scaled_height)
+
+        except Exception as e:
+            print(f"개별 차트 추가 중 오류 발생: {e}")
+
+    c.save()
+    return output_path
