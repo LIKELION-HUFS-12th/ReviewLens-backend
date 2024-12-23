@@ -17,27 +17,10 @@ from .utils import *
 
 
 def get_user_directory(user_id):
-    """Get or create a directory for a specific user."""
     user_dir = os.path.join(settings.MEDIA_ROOT, f"user_{user_id}")
     if not os.path.exists(user_dir):
         os.makedirs(user_dir)
     return user_dir
-
-
-def get_json_results(request, filename):
-    """Fetch JSON results for the authenticated user."""
-    if not filename.endswith('.json'):
-        filename += '.json'
-
-    user_dir = get_user_directory(request.user.id)
-    file_path = os.path.join(user_dir, filename)
-
-    if os.path.exists(file_path):
-        with open(file_path, 'r') as json_file:
-            data = json.load(json_file)
-        return JsonResponse(data, safe=False)
-    else:
-        return JsonResponse({'error': '파일을 찾을 수 없습니다.'}, status=404)
 
 
 class FileUploadView(APIView):
@@ -65,8 +48,9 @@ class FileUploadView(APIView):
                 )
 
                 print("감정 분석 시작...")
-                result_list = analyze_reviews_clova_studio(review_list_test)  # Clova Studio API로 감성분석
-                sentiment_summary = process_sentiment_analysis(result_list, review_list_test, product_list_test)
+                result_list = analyze_reviews_with_model(review_list_test) # KoBERT 모델로 감성분석
+                # result_list = analyze_reviews_clova_studio(review_list_test)  # Clova Studio API로 감성분석
+                sentiment_summary = process_sentiment_analysis(result_list, review_list_test, product_list_test, user_id = request.user.id)
 
                 print("결과 요약 생성 중...")
                 sentiment_counts = total_sentiment_count(sentiment_summary)
@@ -95,37 +79,59 @@ class FileUploadView(APIView):
                 return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+class GetJsonView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+    
+    def get(self, request, filename, *args, **kwargs): 
+        if not filename.endswith('.json'):
+            filename += '.json'
 
+        user_dir = get_user_directory(request.user.id)
+        file_path = os.path.join(user_dir, filename)
+
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as json_file:
+                data = json.load(json_file)
+            return JsonResponse(data, safe=False)
+        else:
+            return JsonResponse({'error': '파일을 찾을 수 없습니다.'}, status=404)
 
 class DownloadPDFView(APIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
 
     def get(self, request, *args, **kwargs):
-        """Allow authenticated users to download their own PDF report."""
-        user_dir = get_user_directory(request.user.id)
-        pdf_path = os.path.join(user_dir, "sentiment_report.pdf")
+        try:
+            user_id = request.user.id  
+            user_dir = get_user_directory(user_id) 
+            pdf_path = os.path.join(user_dir, "sentiment_report.pdf")  
 
-        if os.path.exists(pdf_path):
-            file_handle = open(pdf_path, 'rb')
-            response = FileResponse(file_handle, as_attachment=True, filename="sentiment_report.pdf")
+            if os.path.exists(pdf_path):
+                file_handle = open(pdf_path, 'rb')
+                response = FileResponse(file_handle, as_attachment=True, filename="sentiment_report.pdf")
 
-            # Cleanup 사용자 디렉토리
-            def delayed_cleanup():
-                try:
-                    time.sleep(1)
-                    for root, dirs, files in os.walk(user_dir):
-                        for file in files:
-                            file_path = os.path.join(root, file)
-                            os.remove(file_path)
-                        for dir in dirs:
-                            dir_path = os.path.join(root, dir)
-                            shutil.rmtree(dir_path)
-                    print(f"사용자 {request.user.id}의 데이터가 삭제되었습니다.")
-                except Exception as e:
-                    print(f"사용자 데이터 삭제 중 오류 발생: {e}")
+                # Cleanup 스레드 설정
+                def delayed_cleanup():
+                    try:
+                        time.sleep(1)
+                        for root, dirs, files in os.walk(user_dir):
+                            for file in files:
+                                os.remove(os.path.join(root, file))
+                            for dir in dirs:
+                                shutil.rmtree(os.path.join(root, dir))
+                        print(f"DEBUG: 사용자 {user_id} 데이터 삭제 완료.")
+                    except Exception as e:
+                        print(f"DEBUG: 데이터 삭제 중 오류 - {e}")
 
-            threading.Thread(target=delayed_cleanup).start()
-            return response
+                threading.Thread(target=delayed_cleanup).start()
+                return response
 
-        return Response({'error': 'PDF 파일을 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
+            print(f"DEBUG: PDF 파일을 찾을 수 없습니다. 경로 - {pdf_path}")
+            return Response({'error': 'PDF 파일을 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
+
+        except Exception as e:
+            print(f"DEBUG: 예외 발생 - {e}")
+            traceback.print_exc()
+            return Response({'error': '서버 내부 오류가 발생했습니다.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

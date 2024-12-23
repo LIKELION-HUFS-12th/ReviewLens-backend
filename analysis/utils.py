@@ -187,7 +187,7 @@ def analyze_reviews_with_model(preprocessed_reviews_sliced, batch_size=32):
 
 
 
-def process_sentiment_analysis(sentiment_data_list, original_reviews, product_list_test):
+def process_sentiment_analysis(sentiment_data_list, original_reviews, product_list_test, user_id):
     summary = []
 
     for i, sentiment_data in enumerate(sentiment_data_list):
@@ -202,8 +202,8 @@ def process_sentiment_analysis(sentiment_data_list, original_reviews, product_li
         summary.append(document_summary)
 
     result = json.dumps(summary, ensure_ascii=False, indent=4)
-
-    output_file_path = os.path.join(settings.BASE_DIR, 'media', 'result.json')
+    user_dir = get_user_directory(user_id)
+    output_file_path = os.path.join(user_dir, 'result.json')
     with open(output_file_path, 'w', encoding='utf-8') as file:
         file.write(result)
 
