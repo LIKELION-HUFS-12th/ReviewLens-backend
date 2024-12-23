@@ -36,6 +36,12 @@ if os.path.exists(font_path):
 else:
     print(f"Font not found at {font_path}. Using default font.")
 
+def get_user_directory(user_id):
+    user_dir = os.path.join(settings.MEDIA_ROOT, f"user_{user_id}")
+    if not os.path.exists(user_dir):
+        os.makedirs(user_dir)
+    return user_dir
+
 
 def load_file(file_path):
     text_data = pd.read_excel(file_path)
