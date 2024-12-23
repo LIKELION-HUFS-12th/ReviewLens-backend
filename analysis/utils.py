@@ -20,8 +20,10 @@ from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfbase import pdfmetrics
 from io import BytesIO
-
-
+import time
+import requests
+import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
 matplotlib.use('Agg')  # GUI 백엔드 사용하지 않도록 설정
 
 # 폰트 설정
@@ -33,14 +35,6 @@ if os.path.exists(font_path):
     print(f"Font '{font_name}' successfully set for matplotlib.")
 else:
     print(f"Font not found at {font_path}. Using default font.")
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"현재 장치: {device}")
-
-model_name = "rlawltjd/kobert-sentiment"
-tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-model = AutoModelForSequenceClassification.from_pretrained(model_name).to(device)
-label_map = {0: "negative", 1: "neutral", 2: "positive"}
 
 
 def load_file(file_path):
@@ -65,8 +59,95 @@ def create_test_data(review_list, product_names, sample_size=5):
     return review_list_sliced, product_list_sliced
 
 
+def analyze_review(review, host, api_key, api_key_primary_val, request_id):
+    preset_text = [
+        {"role": "system", "content": "이것은 상품 리뷰에 대한 감정 분석기입니다. 리뷰가 긍정적이라면 'positive', 중립이면 'neutral', 부정적이면 'negative'만으로 답변해주세요. 세 가지 외 다른 답변이 나오면 안됩니다."},
+        {"role": "user", "content": review}
+    ]
+    
+    request_data = {
+        'messages': preset_text,
+        'topP': 0.6,
+        'topK': 0,
+        'maxTokens': 20,  
+        'temperature': 0.1,
+        'repeatPenalty': 1.2,
+        'stopBefore': [],
+        'includeAiFilters': True,
+        'seed': 0
+    }
+    
+    headers = {
+        'X-NCP-CLOVASTUDIO-API-KEY': api_key,
+        'X-NCP-APIGW-API-KEY': api_key_primary_val,
+        'X-NCP-CLOVASTUDIO-REQUEST-ID': request_id,
+        'Content-Type': 'application/json; charset=utf-8',
+        'Accept': 'application/json'
+    }
+    
+    try:
+        response = requests.post(host + '/testapp/v1/chat-completions/HCX-DASH-001', headers=headers, json=request_data)
+        response.raise_for_status()
+        
+        result = response.json()
+        message_content = result['result']['message']['content'].strip()
+        
+        if message_content in ["positive", "neutral", "negative"]:
+            return {"review": review, "sentiment": message_content}
+        else:
+            print(f"예상치 않은 응답: {message_content}. 기본값 'neutral'로 설정.")
+            return {"review": review, "sentiment": "neutral"}
+    
+    except json.JSONDecodeError as e:
+        print(f"JSON 디코딩 에러: {e}.")
+        return {"review": review, "sentiment": "error"}
+    except requests.exceptions.RequestException as e:
+        print(f"API 요청 에러: {e}.")
+        return {"review": review, "sentiment": "error"}
+
+def analyze_reviews_clova_studio(review_list_sliced):
+    print("데이터 전처리 완료. 감정 분석 시작...")
+    start_time = time.time()
+
+    host = 'https://clovastudio.stream.ntruss.com'
+    api_key = 'NTA0MjU2MWZlZTcxNDJiYzCfHM1duMGVmI101pNbw6DRY8rHVXsyr1bq0e2r332L'
+    api_key_primary_val = 'QjtD5GeFK6qBSlyFwpYo50Vrn6aURfdCG6SySOUE'
+    request_id = '26eb069872414eb480d79bd6ccf640d1'
+
+    result_list = []
+    
+    # 병렬 처리를 위한 ThreadPoolExecutor 사용
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        future_to_review = {
+            executor.submit(analyze_review, review, host, api_key, api_key_primary_val, request_id): review
+            for review in review_list_sliced
+        }
+        
+        for i, future in enumerate(as_completed(future_to_review)):
+            try:
+                result = future.result()
+                result_list.append(result)
+                progress = (i + 1) / len(review_list_sliced) * 100
+                print(f'전체 {len(review_list_sliced)}개 데이터 중 {i+1}번 째 데이터 {progress:.2f}% 완료')
+            except Exception as e:
+                print(f"에러 발생: {e}")
+    
+    end_time = time.time()
+    total_time = end_time - start_time
+    print(f"감정 분석 완료. 총 소요 시간: {total_time:.2f}초")
+    return result_list
+
+
 def analyze_reviews_with_model(preprocessed_reviews_sliced, batch_size=32):
     print("데이터 전처리 완료. 감정 분석 시작...")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"현재 장치: {device}")
+
+    model_name = "rlawltjd/kobert-sentiment"
+    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+    model = AutoModelForSequenceClassification.from_pretrained(model_name).to(device)
+    label_map = {0: "negative", 1: "neutral", 2: "positive"}
+    
     start_time = time.time()
 
     result_list = []
