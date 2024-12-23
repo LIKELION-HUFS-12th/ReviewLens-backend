@@ -102,7 +102,6 @@ class DownloadPDFView(APIView):
     authentication_classes = [JWTAuthentication]
 
     def get(self, request, *args, **kwargs):
-        """Allow authenticated users to download their own PDF report."""
         user_dir = get_user_directory(request.user.id)
         pdf_path = os.path.join(user_dir, "sentiment_report.pdf")
 
