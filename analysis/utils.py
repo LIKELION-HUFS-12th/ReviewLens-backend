@@ -10,9 +10,11 @@ from django.conf import settings
 from matplotlib import font_manager, rc
 import matplotlib
 from django.conf import settings
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
-import torch
-import torch.nn.functional as F
+
+# from transformers import AutoTokenizer, AutoModelForSequenceClassification
+# import torch
+# import torch.nn.functional as F
+
 from django.conf import settings
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
@@ -111,14 +113,11 @@ def analyze_review(review, host, api_key, api_key_primary_val, request_id):
         print(f"API 요청 에러: {e}.")
         return {"review": review, "sentiment": "error"}
 
+from project.local_settings import host, api_key, api_key_primary_val, request_id
+
 def analyze_reviews_clova_studio(review_list_sliced):
     print("데이터 전처리 완료. 감정 분석 시작...")
     start_time = time.time()
-
-    host = 'https://clovastudio.stream.ntruss.com'
-    api_key = 'NTA0MjU2MWZlZTcxNDJiYzCfHM1duMGVmI101pNbw6DRY8rHVXsyr1bq0e2r332L'
-    api_key_primary_val = 'QjtD5GeFK6qBSlyFwpYo50Vrn6aURfdCG6SySOUE'
-    request_id = '26eb069872414eb480d79bd6ccf640d1'
 
     result_list = []
     
@@ -144,44 +143,44 @@ def analyze_reviews_clova_studio(review_list_sliced):
     return result_list
 
 
-def analyze_reviews_with_model(preprocessed_reviews_sliced, batch_size=32):
-    print("데이터 전처리 완료. 감정 분석 시작...")
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"현재 장치: {device}")
+# def analyze_reviews_with_model(preprocessed_reviews_sliced, batch_size=32):
+#     print("데이터 전처리 완료. 감정 분석 시작...")
+#     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#     print(f"현재 장치: {device}")
 
-    model_name = "rlawltjd/kobert-sentiment"
-    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-    model = AutoModelForSequenceClassification.from_pretrained(model_name).to(device)
-    label_map = {0: "negative", 1: "neutral", 2: "positive"}
+#     model_name = "rlawltjd/kobert-sentiment"
+#     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+#     model = AutoModelForSequenceClassification.from_pretrained(model_name).to(device)
+#     label_map = {0: "negative", 1: "neutral", 2: "positive"}
     
-    start_time = time.time()
+#     start_time = time.time()
 
-    result_list = []
+#     result_list = []
 
-    total_reviews = len(preprocessed_reviews_sliced)
-    for start_idx in range(0, total_reviews, batch_size):
-        end_idx = min(start_idx + batch_size, total_reviews)
-        batch = preprocessed_reviews_sliced[start_idx:end_idx]
+#     total_reviews = len(preprocessed_reviews_sliced)
+#     for start_idx in range(0, total_reviews, batch_size):
+#         end_idx = min(start_idx + batch_size, total_reviews)
+#         batch = preprocessed_reviews_sliced[start_idx:end_idx]
 
-        inputs = tokenizer(batch, return_tensors="pt", padding=True, truncation=True).to(device)
+#         inputs = tokenizer(batch, return_tensors="pt", padding=True, truncation=True).to(device)
 
-        with torch.no_grad():
-            outputs = model(**inputs)
-            logits = outputs.logits
-            probs = F.softmax(logits, dim=-1)
-            predicted_classes = logits.argmax(dim=-1).tolist()
+#         with torch.no_grad():
+#             outputs = model(**inputs)
+#             logits = outputs.logits
+#             probs = F.softmax(logits, dim=-1)
+#             predicted_classes = logits.argmax(dim=-1).tolist()
 
-        for review, predicted_class, prob in zip(batch, predicted_classes, probs):
-            sentiment = label_map[predicted_class]
-            confidence = prob[predicted_class].item()  
-            result_list.append({"review": review, "sentiment": sentiment, "confidence": confidence})
+#         for review, predicted_class, prob in zip(batch, predicted_classes, probs):
+#             sentiment = label_map[predicted_class]
+#             confidence = prob[predicted_class].item()  
+#             result_list.append({"review": review, "sentiment": sentiment, "confidence": confidence})
 
-        progress = (end_idx / total_reviews) * 100
-        print(f"전체 {total_reviews}개 데이터 중 {end_idx}개 완료 ({progress:.2f}%)")
+#         progress = (end_idx / total_reviews) * 100
+#         print(f"전체 {total_reviews}개 데이터 중 {end_idx}개 완료 ({progress:.2f}%)")
 
-    end_time = time.time()
-    total_time = end_time - start_time
-    print(f"감정 분석 완료. 총 소요 시간: {total_time:.2f}초")
+#     end_time = time.time()
+#     total_time = end_time - start_time
+#     print(f"감정 분석 완료. 총 소요 시간: {total_time:.2f}초")
 
     return result_list
 

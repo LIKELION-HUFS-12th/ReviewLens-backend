@@ -48,8 +48,8 @@ class FileUploadView(APIView):
                 )
 
                 print("감정 분석 시작...")
-                result_list = analyze_reviews_with_model(review_list_test) # KoBERT 모델로 감성분석
-                # result_list = analyze_reviews_clova_studio(review_list_test)  # Clova Studio API로 감성분석
+                # result_list = analyze_reviews_with_model(review_list_test) # KoBERT 모델로 감성분석
+                result_list = analyze_reviews_clova_studio(review_list_test)  # Clova Studio API로 감성분석
                 sentiment_summary = process_sentiment_analysis(result_list, review_list_test, product_list_test, user_id = request.user.id)
 
                 print("결과 요약 생성 중...")
