@@ -15,7 +15,7 @@ et_xmlfile==2.0.0
 filelock==3.16.1
 fonttools==4.55.3
 fsspec==2024.10.0
-#huggingface-hub==0.26.5
+# huggingface-hub==0.26.5
 idna==3.10
 Jinja2==3.1.4
 kiwisolver==1.4.7
@@ -43,12 +43,12 @@ six==1.17.0
 sqlparse==0.5.3
 sympy==1.13.1
 tenacity==9.0.0
-#tokenizers==0.21.0
-#torch==2.5.1
-#torchaudio==2.5.1
-#torchvision==0.20.1
-#tqdm==4.67.1
-#transformers==4.47.0
+# tokenizers==0.21.0
+# torch==2.5.1+cu121
+# torchaudio==2.5.1+cu121
+# torchvision==0.20.1+cu121
+# tqdm==4.67.1
+# transformers==4.47.0
 typing_extensions==4.12.2
 tzdata==2024.2
 urllib3==2.2.3
