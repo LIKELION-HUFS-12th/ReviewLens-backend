@@ -11,4 +11,4 @@ WORKDIR /app
 
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
-COPY local_settings.py .
+COPY project/local_settings.py .
