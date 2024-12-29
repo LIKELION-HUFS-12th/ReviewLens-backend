@@ -25,6 +25,6 @@ urlpatterns = [
     path('analysis/', include('analysis.urls')),
     path('member/', include('member.urls')),
     path('board/', include('board.urls')),
-]
+] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
