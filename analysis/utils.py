@@ -279,10 +279,10 @@ def generate_wordcloud_directly_to_pdf(pdf_canvas, text, title='', font_path='',
 
 
 def create_sentiment_report_pdf_directly(summary, sentiment_counts, ps_counts, output_path):
-    font_path = os.path.join(settings.BASE_DIR, 'analysis', 'fonts', 'NanumGothicCoding.TTF')
+    font_path = os.path.join(settings.BASE_DIR, 'analysis', 'fonts', 'NGULIM.TTF')
     if os.path.exists(font_path):
-        pdfmetrics.registerFont(TTFont('NanumGothic', font_path))
-        font_name = 'NanumGothic'
+        pdfmetrics.registerFont(TTFont('NGULIM', font_path))
+        font_name = 'NGULIM'
     else:
         font_name = 'Helvetica'
 
