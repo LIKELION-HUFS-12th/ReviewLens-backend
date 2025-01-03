@@ -11,11 +11,16 @@ class PostSerializer(serializers.ModelSerializer):
         time = timezone.localtime(obj.created_at)
         return time.strftime('%Y-%m-%d')
 
+class CommentRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Comment
+        fields = ['comment']
+
 class CommentSerializer(serializers.ModelSerializer):
     created_at = serializers.SerializerMethodField()
     class Meta:
         model = Comment
-        fields = ['comment', 'created_at']
+        fields = ['id', 'user', 'comment', 'created_at']
     def get_created_at(self, obj):
         time = timezone.localtime(obj.created_at)
         return time.strftime('%Y-%m-%d')

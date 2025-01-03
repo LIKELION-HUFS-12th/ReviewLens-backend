@@ -4,8 +4,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from .serializers import *
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from rest_framework.permissions import IsAuthenticated
-from .permissions import IsOwnerOrUserOrReadOnly
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
+from .permissions import IsOwnerOrReadOnly
 from rest_framework.views import APIView
 
 # Create your views here.
@@ -21,7 +21,7 @@ class PostingView(APIView):
 
 class PostDetailView(APIView):
     authentication_classes = [JWTAuthentication]
-    permission_classes = [IsOwnerOrUserOrReadOnly]
+    permission_classes = [IsOwnerOrReadOnly]
     def get_object(self, pk):
         post = get_object_or_404(Post, pk=pk)
         self.check_object_permissions(self.request, post)
@@ -44,12 +44,24 @@ class PostDetailView(APIView):
         post = self.get_object(pk)
         post.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-    
-    #댓글 작성
+
+class CommentView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def get(self, request, pk):
+        try:
+            post = Post.objects.get(pk=pk)
+            comments = Comment.objects.filter(post=post)
+            serializer = CommentSerializer(comments, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Post.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
     def post(self, request, pk):
         try:
             post = Post.objects.get(pk=pk)
-            serializer = CommentSerializer(data=request.data)
+            serializer = CommentRequestSerializer(data=request.data)
             if serializer.is_valid():
                 new_comment = serializer.save(post=post, user=request.user)
                 response = PostDetailSerializer(post)
@@ -57,6 +69,18 @@ class PostDetailView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Post.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
+        
+class CommentDelete(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsOwnerOrReadOnly]
+    
+    def delete(self, request, post_id, comment_id):
+        post = Post.objects.get(pk=post_id)
+        comment = Comment.objects.get(pk=comment_id)
+        self.check_object_permissions(self.request, post)
+        serializer = PostDetailSerializer(post)
+        comment.delete()
+        return Response(serializer.data, status=status.HTTP_200_OK)
     
 class UserPostListView(APIView):
     authentication_classes = [JWTAuthentication]
