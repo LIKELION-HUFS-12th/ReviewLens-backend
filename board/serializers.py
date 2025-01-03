@@ -36,6 +36,7 @@ class PostListSerializer(serializers.ModelSerializer):
 
 class PostDetailSerializer(serializers.ModelSerializer):
     created_at = serializers.SerializerMethodField()
+    comments = CommentSerializer(many=True, read_only=True)
     class Meta:
         model = Post
         fields = ['id', 'user', 'title', 'body', 'created_at', 'comments']
