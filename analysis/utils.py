@@ -256,6 +256,7 @@ def count_for_indiv(results):
 
 
 def generate_wordcloud_directly_to_pdf(pdf_canvas, text, title='', font_path='', y_position=600):
+    print(font_path)
     try:
         stopwords = wordcloud_stopwords()
         filtered_text = remove_stopwords(text, stopwords)
