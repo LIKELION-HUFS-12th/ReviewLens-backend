@@ -256,6 +256,7 @@ def count_for_indiv(results):
 
 
 def generate_wordcloud_directly_to_pdf(pdf_canvas, text, title='', font_path='', y_position=600):
+    print(f"generate_wordcloud_directly_to_pdf에서 현재 사용 중인 font_path = {font_path}")
     try:
         stopwords = wordcloud_stopwords()
         filtered_text = remove_stopwords(text, stopwords)
@@ -285,6 +286,7 @@ def create_sentiment_report_pdf_directly(summary, sentiment_counts, ps_counts, o
         font_name = 'NGULIM'
     else:
         font_name = 'Helvetica'
+    print(f"create_sentiment_report_pdf_directly에서 현재 사용 중인 font_path = {font_path}")
 
     # PDF 생성
     c = canvas.Canvas(output_path, pagesize=letter)
@@ -298,10 +300,10 @@ def create_sentiment_report_pdf_directly(summary, sentiment_counts, ps_counts, o
     neutral_percent = (sentiment_counts['Neutral'] / total_reviews) * 100
     negative_percent = (sentiment_counts['Negative'] / total_reviews) * 100
 
-    c.drawString(30, 710, f"총 {total_reviews}개의 리뷰 분석 결과:")
-    c.drawString(30, 695, f"긍정 리뷰: {sentiment_counts['Positive']}개 ({positive_percent:.2f}%)")
-    c.drawString(30, 680, f"중립 리뷰: {sentiment_counts['Neutral']}개 ({neutral_percent:.2f}%)")
-    c.drawString(30, 665, f"부정 리뷰: {sentiment_counts['Negative']}개 ({negative_percent:.2f}%)")
+    c.drawString(30, 710, f"Total analysis results for {total_reviews} reviews:")
+    c.drawString(30, 695, f"Positive reviews: {sentiment_counts['Positive']} ({positive_percent:.2f}%)")
+    c.drawString(30, 680, f"Neutral reviews: {sentiment_counts['Neutral']} ({neutral_percent:.2f}%)")
+    c.drawString(30, 665, f"Negative reviews: {sentiment_counts['Negative']} ({negative_percent:.2f}%)")
     c.drawString(30, 650, "------------------------------------------")
 
     add_pie_chart_to_pdf(
