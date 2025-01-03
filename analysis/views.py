@@ -44,7 +44,7 @@ class FileUploadView(APIView):
                 print(f"데이터 로딩 시작: {file_path}")
                 review_list, product_names = load_file(file_path)
                 review_list_test, product_list_test = create_test_data(
-                    review_list, product_names, sample_size=50
+                    review_list, product_names, sample_size=10
                 )
 
                 print("감정 분석 시작...")
