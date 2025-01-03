@@ -70,14 +70,14 @@ class CommentView(APIView):
         except Post.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
         
-class CommentDelete(APIView):
+class CommentDeleteView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsOwnerOrReadOnly]
-    
+
     def delete(self, request, post_id, comment_id):
         post = Post.objects.get(pk=post_id)
         comment = Comment.objects.get(pk=comment_id)
-        self.check_object_permissions(self.request, post)
+        self.check_object_permissions(self.request, comment)
         serializer = PostDetailSerializer(post)
         comment.delete()
         return Response(serializer.data, status=status.HTTP_200_OK)
