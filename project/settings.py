@@ -55,9 +55,12 @@ INSTALLED_APPS = [
     # simple-jwt 관련
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
+    # CORS 설정
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
