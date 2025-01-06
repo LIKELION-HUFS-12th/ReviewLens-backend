@@ -18,8 +18,15 @@ class RegisterView(APIView):
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
             serializer.save()
-            return Response({"message": "User registered successfully."}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                                "code" : 201,
+                                "msg" : "User registered successfully."
+                            }, status=status.HTTP_201_CREATED)
+        return Response({
+                            "code": 400,
+                            "msg": "BAD REQUEST",
+                            "data": serializer.errors
+                        }, status=status.HTTP_400_BAD_REQUEST)
     
 class LoginView(APIView):
     authentication_classes = [JWTAuthentication]
@@ -32,21 +39,34 @@ class LoginView(APIView):
         user = User.objects.get(email=email)
 
         if user is None:
-            return Response({"message": "User not found."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                                "code" : 400,
+                                "msg" : "User not found."
+                            }, status=status.HTTP_400_BAD_REQUEST)
         if not user.check_password(password):
             print(user.check_password(password))
-            return Response({"message": "Check your password."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                                "code" : 400,
+                                "msg" : "Check your password."
+                            }, status=status.HTTP_400_BAD_REQUEST)
         if user is not None:
             token = TokenObtainPairSerializer.get_token(user)
             refresh_token = str(token)
             access_token = str(token.access_token)
             return Response({
-                "access" : access_token,
-                "refresh" : refresh_token,
-                "user" : UserLoginSerializer(user).data
-            }, status=status.HTTP_200_OK)
+                                "code" : 200,
+                                "msg" : "OK",
+                                "data" : {
+                                    "access" : access_token,
+                                    "refresh" : refresh_token,
+                                    "user" : UserLoginSerializer(user).data
+                                }
+                            }, status=status.HTTP_200_OK)
         else:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                                "code" : 400,
+                                "msg" : "BAD REQUEST"
+                            }, status=status.HTTP_400_BAD_REQUEST)
 
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
@@ -60,7 +80,10 @@ class LogoutView(APIView):
         refresh_token = self.request.data.get('refresh_token')
         token = RefreshToken(token=refresh_token)
         token.blacklist()
-        return Response({"status": "logged out successfully"})
+        return Response({
+                            "code" : 200,
+                            "msg" : "logged out successfully."
+                        })
 
 class MyprofileView(APIView):
     permission_classes = [IsAuthenticated]
@@ -68,7 +91,11 @@ class MyprofileView(APIView):
     def get(self, request):
         user = User.objects.get(id=request.user.id)
         serializer = UserLoginSerializer(user, context={'request': request})
-        return Response(serializer.data)
+        return Response({
+                            "code": 200,
+                            "msg": "OK",
+                            "data": serializer.data
+                        }, status=status.HTTP_200_OK)
     
     def patch(self, request):
         user = User.objects.get(id=request.user.id)
@@ -76,5 +103,13 @@ class MyprofileView(APIView):
 
         if serializer.is_valid(raise_exception=True):
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                                "code": 200,
+                                "msg": "OK",
+                                "data": serializer.data
+                            }, status=status.HTTP_200_OK)
+        return Response({
+                            "code": 400,
+                            "msg": "BAD REQUEST",
+                            "data": serializer.errors
+                        }, status=status.HTTP_400_BAD_REQUEST)

@@ -9,6 +9,22 @@ from .permissions import IsOwnerOrReadOnly
 from rest_framework.views import APIView
 
 # Create your views here.
+def create_response(code:int, data=None):
+    resposne_message = {
+        200: "OK",
+        201: "CREATED",
+        204 : "NO CONTENT",
+        400: "BAD REQUEST",
+        404: "NOT FOUND",
+    }
+    msg = resposne_message.get(code)
+
+    return {
+        "code": code,
+        "msg": msg,
+        "data": data or {}
+    }
+
 class PostingView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -16,8 +32,8 @@ class PostingView(APIView):
         serializer = PostSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
             serializer.save(user=request.user)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(create_response(201, serializer.data), status=status.HTTP_201_CREATED)
+        return Response(create_response(400, serializer.errors), status=status.HTTP_400_BAD_REQUEST)
 
 class PostDetailView(APIView):
     authentication_classes = [JWTAuthentication]
@@ -30,20 +46,20 @@ class PostDetailView(APIView):
     def get(self, request, pk):
         post = self.get_object(pk)
         serializer = PostDetailSerializer(post)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(create_response(200, serializer.data), status=status.HTTP_200_OK)
 
     def patch(self, request, pk):
         post = self.get_object(pk)
         serializer = PostDetailSerializer(post, data=request.data, partial=True)
         if serializer.is_valid(raise_exception=True):
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(create_response(200, serializer.data), status=status.HTTP_200_OK)
+        return Response(create_response(400, serializer.errors), status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
         post = self.get_object(pk)
         post.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(create_response(204), status=status.HTTP_204_NO_CONTENT)
 
 class CommentView(APIView):
     authentication_classes = [JWTAuthentication]
@@ -54,9 +70,9 @@ class CommentView(APIView):
             post = Post.objects.get(pk=pk)
             comments = Comment.objects.filter(post=post)
             serializer = CommentSerializer(comments, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response(create_response(200, serializer.data), status=status.HTTP_200_OK)
         except Post.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND)
+            return Response(create_response(404, serializer.errors), status=status.HTTP_404_NOT_FOUND)
 
     def post(self, request, pk):
         try:
@@ -65,10 +81,10 @@ class CommentView(APIView):
             if serializer.is_valid():
                 new_comment = serializer.save(post=post, user=request.user)
                 response = PostDetailSerializer(post)
-                return Response(response.data, status=status.HTTP_201_CREATED)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                return Response(create_response(201, response.data), status=status.HTTP_201_CREATED)
+            return Response(create_response(400, serializer.errors), status=status.HTTP_400_BAD_REQUEST)
         except Post.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND)
+            return Response(create_response(404, serializer.errors), status=status.HTTP_404_NOT_FOUND)
         
 class CommentDeleteView(APIView):
     authentication_classes = [JWTAuthentication]
@@ -80,7 +96,7 @@ class CommentDeleteView(APIView):
         self.check_object_permissions(self.request, comment)
         serializer = PostDetailSerializer(post)
         comment.delete()
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(create_response(200, serializer.data), status=status.HTTP_200_OK)
     
 class UserPostListView(APIView):
     authentication_classes = [JWTAuthentication]
@@ -90,6 +106,6 @@ class UserPostListView(APIView):
             user = request.user
             posts = Post.objects.filter(user=user.id)
             serializer = PostListSerializer(posts, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response(create_response(200, serializer.data), status=status.HTTP_200_OK)
         except:
-            return Response(status=status.HTTP_404_NOT_FOUND)
+            return Response(create_response(404, serializer.errors), status=status.HTTP_404_NOT_FOUND)
