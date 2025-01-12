@@ -27,6 +27,8 @@ import requests
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 matplotlib.use('Agg')  # GUI 백엔드 사용하지 않도록 설정
+# PDF내 색상코드 설정용
+from reportlab.lib.colors import HexColor
 
 # 폰트 설정
 font_path = os.path.join(settings.BASE_DIR, 'analysis', 'fonts', 'NGULIM.TTF')  # 폰트 파일 경로
@@ -288,68 +290,112 @@ def create_sentiment_report_pdf_directly(summary, sentiment_counts, ps_counts, o
         font_name = 'Helvetica'
     print(f"create_sentiment_report_pdf_directly에서 현재 사용 중인 font_path = {font_path}")
 
+
     # PDF 생성
     c = canvas.Canvas(output_path, pagesize=letter)
+    # 디자인 컬러코드 설정
+    title_color = HexColor("#1E90FF")  # Blue for titles
+    subtitle_color = HexColor("#696969")  # Gray for subtitles
+    box_color = HexColor("#F5F5F5")  # Light gray for boxes
+    line_color = HexColor("#1E90FF")  # Blue for lines
+
+    # ===== 표지 페이지 =====
+    c.setFillColor(title_color)
+    c.setFont(font_name, 28)
+    c.drawCentredString(300, 700, "감정 분석 보고서")  # Title
+
+    c.setFillColor(subtitle_color)
+    c.setFont(font_name, 16)
+    c.drawCentredString(300, 650, "리뷰 데이터를 바탕으로 한 감정 분석 결과")  # Subtitle
+
     c.setFont(font_name, 12)
+    c.drawCentredString(300, 600, "이 보고서는 업로드된 리뷰 데이터를 분석하여 감정 결과를 제공합니다.")
 
-    # 첫 번째 페이지: 분석 결과 요약 및 전체 파이 차트
-    c.drawString(30, 750, "Sentiment Analysis Report")
-    c.drawString(30, 735, "------------------------------------------")
-    total_reviews = sum(sentiment_counts.values())
-    positive_percent = (sentiment_counts['Positive'] / total_reviews) * 100
-    neutral_percent = (sentiment_counts['Neutral'] / total_reviews) * 100
-    negative_percent = (sentiment_counts['Negative'] / total_reviews) * 100
+    # Add a decorative box
+    c.setFillColor(box_color)
+    c.rect(100, 350, 400, 200, fill=True, stroke=False)
 
-    c.drawString(30, 710, f"Total analysis results for {total_reviews} reviews:")
-    c.drawString(30, 695, f"Positive reviews: {sentiment_counts['Positive']} ({positive_percent:.2f}%)")
-    c.drawString(30, 680, f"Neutral reviews: {sentiment_counts['Neutral']} ({neutral_percent:.2f}%)")
-    c.drawString(30, 665, f"Negative reviews: {sentiment_counts['Negative']} ({negative_percent:.2f}%)")
-    c.drawString(30, 650, "------------------------------------------")
+    # Add logo inside the box
+    if os.path.exists(logo_path):
+        c.drawImage(logo_path, x=230, y=380, width=120, height=120)
 
-    add_pie_chart_to_pdf(
-        c,
-        sentiment_counts,
-        title="Sentiment Distribution",
-        x=80,
-        y=300,
-        width=400,
-        height=300
-    )
+    c.setFillColor(title_color)
+    c.setFont(font_name, 10)
+    c.drawCentredString(300, 340, "Powered by ReviewLens")
     c.showPage()
 
-    # 두 번째 페이지: 긍정 및 부정 워드클라우드
-    positive_text = " ".join([review["original_content"] for review in summary if review["document_sentiment"] == "positive"])
-    generate_wordcloud_directly_to_pdf(c, positive_text, title="Positive Reviews Word Cloud", font_path=font_path, y_position=500)
+    # ===== 첫 번째 페이지 =====
+    c.setFont(font_name, 18)
+    c.setFillColor(title_color)
+    c.drawString(50, 750, "1. 전체 리뷰 분석 요약")
 
-    negative_text = " ".join([review["original_content"] for review in summary if review["document_sentiment"] == "negative"])
-    generate_wordcloud_directly_to_pdf(c, negative_text, title="Negative Reviews Word Cloud", font_path=font_path, y_position=250)
+    c.setFont(font_name, 12)
+    c.setFillColor(subtitle_color)
+    c.drawString(50, 720, "이 페이지에서는 전체 리뷰에 대한 감정 분석 결과를 요약합니다.")
+
+    # Add a decorative line
+    c.setStrokeColor(line_color)
+    c.setLineWidth(2)
+    c.line(50, 715, 550, 715)
+
+    # Add a background box for the content
+    c.setFillColor(box_color)
+    c.rect(50, 650, 500, 100, fill=True, stroke=False)
+
+    c.setFillColor(subtitle_color)
+    c.drawString(60, 700, f"총 리뷰 개수: {total_reviews}개")
+    c.drawString(60, 680, f"긍정 리뷰: {sentiment_counts['Positive']}개 ({positive_percent:.2f}%)")
+    c.drawString(60, 660, f"중립 리뷰: {sentiment_counts['Neutral']}개 ({neutral_percent:.2f}%)")
+    c.drawString(60, 640, f"부정 리뷰: {sentiment_counts['Negative']}개 ({negative_percent:.2f}%)")
     c.showPage()
 
-    # 세 번째 페이지부터: 개별 제품 차트 (바 차트 + 파이 차트)
-    products_per_page = 4  
-    chart_y_positions = [600, 400, 200, 0] 
-    product_items = list(ps_counts.items())
+    # ===== 두 번째 페이지 =====
+    c.setFont(font_name, 18)
+    c.setFillColor(title_color)
+    c.drawString(50, 750, "2. 긍정 및 부정 리뷰 워드클라우드")
 
-    for page_idx in range(0, len(product_items), products_per_page):
-        for chart_idx, (product, counts) in enumerate(product_items[page_idx:page_idx + products_per_page]):
-            y_position = chart_y_positions[chart_idx]
-            add_combined_chart_to_pdf(
-                c,
-                counts,
-                product_title=product,
-                x=50,
-                y=y_position,
-                bar_width=250,
-                pie_width=250,
-                height=180
-            )
+    c.setFont(font_name, 12)
+    c.setFillColor(subtitle_color)
+    c.drawString(50, 720, "긍정 및 부정 리뷰에서 자주 언급된 단어를 시각화한 결과입니다.")
 
-        c.showPage()
+    c.setStrokeColor(line_color)
+    c.setLineWidth(2)
+    c.line(50, 715, 550, 715)
 
+    # Add boxes for wordcloud placeholders
+    c.setFillColor(box_color)
+    c.rect(50, 550, 500, 100, fill=True, stroke=False)
+    c.rect(50, 400, 500, 100, fill=True, stroke=False)
+
+    c.setFillColor(subtitle_color)
+    c.drawString(60, 620, "워드클라우드 예시 (긍정 리뷰):")
+    c.drawString(60, 470, "워드클라우드 예시 (부정 리뷰):")
+    c.showPage()
+
+
+    # ===== 세 번째 페이지 =====
+    c.setFont(font_name, 18)
+    c.setFillColor(title_color)
+    c.drawString(50, 750, "3. 제품별 감정 분석 결과")
+
+    c.setFont(font_name, 12)
+    c.setFillColor(subtitle_color)
+    c.drawString(50, 720, "각 제품별로 감정 분석 결과를 시각화한 차트입니다.")
+
+    c.setStrokeColor(line_color)
+    c.setLineWidth(2)
+    c.line(50, 715, 550, 715)
+
+    # Add product analysis box
+    c.setFillColor(box_color)
+    c.rect(50, 550, 500, 150, fill=True, stroke=False)
+
+    c.setFillColor(subtitle_color)
+    c.drawString(60, 680, "제품 A: 긍정 5개, 중립 2개, 부정 1개")
+    c.drawString(60, 660, "제품 B: 긍정 3개, 중립 1개, 부정 2개")
 
     c.save()
     print(f"PDF가 '{output_path}'에 저장되었습니다.")
-
 
 
 
