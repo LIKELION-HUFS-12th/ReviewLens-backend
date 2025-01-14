@@ -63,7 +63,7 @@ class FileUploadView(APIView):
                     summary=sentiment_summary,
                     sentiment_counts=sentiment_counts,
                     ps_counts=ps_counts,
-                    output_path=pdf_output_path
+                    output_path=pdf_output_path,
                 )
 
                 print("모든 작업 완료")

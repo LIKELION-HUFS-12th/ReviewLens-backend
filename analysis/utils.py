@@ -289,6 +289,11 @@ def create_sentiment_report_pdf_directly(summary, sentiment_counts, ps_counts, o
     else:
         font_name = 'Helvetica'
     print(f"create_sentiment_report_pdf_directly에서 현재 사용 중인 font_path = {font_path}")
+    
+    total_reviews = sum(sentiment_counts.values())
+    positive_percent = (sentiment_counts['Positive'] / total_reviews) * 100 if total_reviews > 0 else 0
+    neutral_percent = (sentiment_counts['Neutral'] / total_reviews) * 100 if total_reviews > 0 else 0
+    negative_percent = (sentiment_counts['Negative'] / total_reviews) * 100 if total_reviews > 0 else 0
 
 
     # PDF 생성
@@ -314,7 +319,7 @@ def create_sentiment_report_pdf_directly(summary, sentiment_counts, ps_counts, o
     # Add a decorative box
     c.setFillColor(box_color)
     c.rect(100, 350, 400, 200, fill=True, stroke=False)
-
+    logo_path = ''
     # Add logo inside the box
     if os.path.exists(logo_path):
         c.drawImage(logo_path, x=230, y=380, width=120, height=120)
