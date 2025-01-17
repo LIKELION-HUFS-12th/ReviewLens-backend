@@ -125,7 +125,7 @@ def analyze_reviews_clova_studio(review_list_sliced):
     result_list = []
     
     # 병렬 처리를 위한 ThreadPoolExecutor 사용
-    with ThreadPoolExecutor() as executor:
+    with ThreadPoolExecutor(max_workers=10) as executor:
         future_to_review = {
             executor.submit(analyze_review, review, host, api_key, api_key_primary_val, request_id): review
             for review in review_list_sliced
