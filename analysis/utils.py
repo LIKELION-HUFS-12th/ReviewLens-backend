@@ -310,13 +310,13 @@ def create_sentiment_report_pdf_directly(summary, sentiment_counts, ps_counts, o
 
     # c.setFillColor(box_color)
     # c.rect(100, 350, 400, 200, fill=True, stroke=False)
-    logo_path = os.path.join(settings.BASE_DIR, 'analysis', 'fonts', 'Logo.png')
+    logo_path = os.path.join(settings.BASE_DIR, 'analysis', 'fonts', 'logo.jpg')
     if os.path.exists(logo_path):
-        c.drawImage(logo_path, x=120, y=340, width=350, height=250)
+        c.drawImage(logo_path, x=120, y=130, width=350, height=450)
 
     c.setFillColor(title_color)
     c.setFont("NanumMyeongjo", 10)
-    c.drawCentredString(300, 300, "Powered by ReviewLens")
+    c.drawCentredString(300, 100, "Powered by ReviewLens")
     c.showPage()
 
     # ===== 첫 번째 페이지 =====
@@ -326,7 +326,7 @@ def create_sentiment_report_pdf_directly(summary, sentiment_counts, ps_counts, o
 
     c.setFont("NanumMyeongjo", 12)
     c.setFillColor(subtitle_color)
-    c.drawString(50, 720, "이 페이지에서는 전체 리뷰에 대한 감정 분석 결과를 요약합니다.")
+    c.drawString(50, 720, "전체 리뷰에 대한 감정 분석 결과입니다.")
 
     c.setStrokeColor(line_color)
     c.setLineWidth(2)
@@ -336,7 +336,7 @@ def create_sentiment_report_pdf_directly(summary, sentiment_counts, ps_counts, o
     c.rect(50, 600, 500, 100, fill=True, stroke=False)
 
     c.setFillColor(subtitle_color)
-    c.drawString(60, 680, f"총 리뷰 개수: {total_reviews}개")
+    c.drawString(60, 680, f"분석한 리뷰 개수: {total_reviews}개")
     c.drawString(60, 660, f"긍정 리뷰: {sentiment_counts['Positive']}개 ({positive_percent:.2f}%)")
     c.drawString(60, 640, f"중립 리뷰: {sentiment_counts['Neutral']}개 ({neutral_percent:.2f}%)")
     c.drawString(60, 620, f"부정 리뷰: {sentiment_counts['Negative']}개 ({negative_percent:.2f}%)")
