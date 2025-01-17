@@ -280,166 +280,77 @@ def generate_wordcloud_directly_to_pdf(pdf_canvas, text,  font_path='', y_positi
 
 
 def create_sentiment_report_pdf_directly(summary, sentiment_counts, ps_counts, output_path):
-    font_path = os.path.join(settings.BASE_DIR, 'analysis', 'fonts', 'NanumMyeongjo.ttf')
+    font_path = os.path.join(settings.BASE_DIR, 'analysis', 'fonts', 'NGULIM.TTF')
+    if os.path.exists(font_path):
+        pdfmetrics.registerFont(TTFont('NGULIM', font_path))
+        font_name = 'NGULIM'
+    else:
+        font_name = 'Helvetica'
     print(f"create_sentiment_report_pdf_directly에서 현재 사용 중인 font_path = {font_path}")
-    
-    total_reviews = sum(sentiment_counts.values())
-    positive_percent = (sentiment_counts['Positive'] / total_reviews) * 100 if total_reviews > 0 else 0
-    neutral_percent = (sentiment_counts['Neutral'] / total_reviews) * 100 if total_reviews > 0 else 0
-    negative_percent = (sentiment_counts['Negative'] / total_reviews) * 100 if total_reviews > 0 else 0
-    positive_text = " ".join([review["original_content"] for review in summary if review["document_sentiment"] == "positive"])
-    negative_text = " ".join([review["original_content"] for review in summary if review["document_sentiment"] == "negative"])
 
+    # PDF 생성
     c = canvas.Canvas(output_path, pagesize=letter)
-    title_color = HexColor("#1E90FF")  # Blue 
-    subtitle_color = HexColor("#696969")  # Gray 
-    box_color = HexColor("#F5F5F5")  # Light gray 
-    line_color = HexColor("#1E90FF")  # Blue 
+    c.setFont(font_name, 12)
 
-    # ===== 표지 페이지 =====
-    c.setFillColor(title_color)
-    c.setFont("NanumMyeongjo", 28)
-    c.drawCentredString(300, 700, "감정 분석 보고서")  
+    # 첫 번째 페이지: 분석 결과 요약 및 전체 파이 차트
+    c.drawString(30, 750, "Sentiment Analysis Report")
+    c.drawString(30, 735, "------------------------------------------")
+    total_reviews = sum(sentiment_counts.values())
+    positive_percent = (sentiment_counts['Positive'] / total_reviews) * 100
+    neutral_percent = (sentiment_counts['Neutral'] / total_reviews) * 100
+    negative_percent = (sentiment_counts['Negative'] / total_reviews) * 100
 
-    c.setFillColor(subtitle_color)
-    c.setFont("NanumMyeongjo", 16)
-    c.drawCentredString(300, 650, "리뷰 데이터를 바탕으로 한 감정 분석 결과")  
-
-    c.setFont("NanumMyeongjo", 12)
-    c.drawCentredString(300, 600, "이 보고서는 업로드된 리뷰 데이터를 분석하여 감정 결과를 제공합니다.")
-
-    # c.setFillColor(box_color)
-    # c.rect(100, 350, 400, 200, fill=True, stroke=False)
-    logo_path = os.path.join(settings.BASE_DIR, 'analysis', 'fonts', 'Logo.png')
-    if os.path.exists(logo_path):
-        c.drawImage(logo_path, x=120, y=340, width=350, height=250)
-
-    c.setFillColor(title_color)
-    c.setFont("NanumMyeongjo", 10)
-    c.drawCentredString(300, 300, "Powered by ReviewLens")
-    c.showPage()
-
-    # ===== 첫 번째 페이지 =====
-    c.setFont("NanumMyeongjo", 18)
-    c.setFillColor(subtitle_color)
-    c.drawString(50, 750, "1. 전체 리뷰 분석 요약")
-
-    c.setFont("NanumMyeongjo", 12)
-    c.setFillColor(subtitle_color)
-    c.drawString(50, 720, "이 페이지에서는 전체 리뷰에 대한 감정 분석 결과를 요약합니다.")
-
-    c.setStrokeColor(line_color)
-    c.setLineWidth(2)
-    c.line(50, 715, 550, 715)
-
-    c.setFillColor(box_color)
-    c.rect(50, 600, 500, 100, fill=True, stroke=False)
-
-    c.setFillColor(subtitle_color)
-    c.drawString(60, 680, f"총 리뷰 개수: {total_reviews}개")
-    c.drawString(60, 660, f"긍정 리뷰: {sentiment_counts['Positive']}개 ({positive_percent:.2f}%)")
-    c.drawString(60, 640, f"중립 리뷰: {sentiment_counts['Neutral']}개 ({neutral_percent:.2f}%)")
-    c.drawString(60, 620, f"부정 리뷰: {sentiment_counts['Negative']}개 ({negative_percent:.2f}%)")
-    
-    pie_data = {
-        '긍정': sentiment_counts['Positive'],
-        '중립': sentiment_counts['Neutral'],
-        '부정': sentiment_counts['Negative'],
-    }
+    c.drawString(30, 710, f"Total analysis results for {total_reviews} reviews:")
+    c.drawString(30, 695, f"Positive reviews: {sentiment_counts['Positive']} ({positive_percent:.2f}%)")
+    c.drawString(30, 680, f"Neutral reviews: {sentiment_counts['Neutral']} ({neutral_percent:.2f}%)")
+    c.drawString(30, 665, f"Negative reviews: {sentiment_counts['Negative']} ({negative_percent:.2f}%)")
+    c.drawString(30, 650, "------------------------------------------")
 
     add_pie_chart_to_pdf(
-        pdf_canvas=c, 
-        data=pie_data, 
-        title="전체 리뷰 감정 분석 결과", 
-        x=90,  
-        y=150,  
-        width=400,  
-        height=400,  
-        dpi=300  
-    )    
+        c,
+        sentiment_counts,
+        title="Sentiment Distribution",
+        x=80,
+        y=300,
+        width=400,
+        height=300
+    )
     c.showPage()
 
-    # ===== 두 번째 페이지 =====
-    c.setFont("NanumMyeongjo", 18)
-    c.setFillColor(title_color)
-    c.drawString(50, 750, "2. 긍정 및 부정 리뷰 워드클라우드")
+    # 두 번째 페이지: 긍정 및 부정 워드클라우드
+    positive_text = " ".join([review["original_content"] for review in summary if review["document_sentiment"] == "positive"])
+    generate_wordcloud_directly_to_pdf(c, positive_text, title="Positive Reviews Word Cloud", font_path=font_path, y_position=500)
 
-    c.setFont("NanumMyeongjo", 12)
-    c.setFillColor(subtitle_color)
-    c.drawString(50, 720, "긍정 및 부정 리뷰에서 자주 언급된 단어를 시각화한 결과입니다.")
-
-    c.setStrokeColor(line_color)
-    c.setLineWidth(2)
-    c.line(50, 715, 550, 715)
-
-    # c.setFillColor(box_color)
-    # c.rect(50, 400, 500, 300, fill=True, stroke=False)  
-    # c.rect(50, 50, 500, 300, fill=True, stroke=False)  
-
-    # c.setFillColor(subtitle_color)
-    
-    c.drawString(60, 670, "긍정적인 리뷰")  
-    generate_wordcloud_directly_to_pdf(c, positive_text, font_path=font_path, y_position=410)
-
-    c.drawString(60, 320, "부정적인 리뷰")  
-    generate_wordcloud_directly_to_pdf(c, negative_text, font_path=font_path, y_position=60)
-    
+    negative_text = " ".join([review["original_content"] for review in summary if review["document_sentiment"] == "negative"])
+    generate_wordcloud_directly_to_pdf(c, negative_text, title="Negative Reviews Word Cloud", font_path=font_path, y_position=250)
     c.showPage()
 
+    
 
-    # ===== 세 번째 페이지 =====
-    c.setFont("NanumMyeongjo", 18)
-    c.setFillColor(title_color)
-    c.drawString(50, 750, "3. 제품별 감정 분석 결과")
-
-    c.setFont("NanumMyeongjo", 12)
-    c.setFillColor(subtitle_color)
-    c.drawString(50, 720, "각 제품별로 감정 분석 결과를 시각화한 차트입니다.")
-
-    c.setStrokeColor(line_color)
-    c.setLineWidth(2)
-    c.line(50, 715, 550, 715)
-
-    products_per_page = 3  
-    chart_y_positions = [480, 240, 0]  
+    # 세 번째 페이지부터: 개별 제품 차트 (바 차트 + 파이 차트)
+    products_per_page = 4  
+    chart_y_positions = [600, 400, 200, 0] 
     product_items = list(ps_counts.items())
 
     for page_idx in range(0, len(product_items), products_per_page):
-        products_on_page = product_items[page_idx:page_idx + products_per_page]
-
-        for chart_idx, (product, counts) in enumerate(products_on_page):
-            y_position = chart_y_positions[chart_idx]  
+        for chart_idx, (product, counts) in enumerate(product_items[page_idx:page_idx + products_per_page]):
+            y_position = chart_y_positions[chart_idx]
             add_combined_chart_to_pdf(
-                pdf_canvas=c,
-                data=counts,
+                c,
+                counts,
                 product_title=product,
                 x=50,
                 y=y_position,
-                bar_width=220,  
-                pie_width=220,  
-                height=220,  
-                dpi=300
+                bar_width=250,
+                pie_width=250,
+                height=180
             )
 
-        if page_idx + products_per_page < len(product_items):  
-            c.showPage()
+        c.showPage()
 
-            c.setFont("NanumMyeongjo", 18)
-            c.setFillColor(title_color)
-            c.drawString(50, 750, "3. 제품별 감정 분석 결과")
-
-            c.setFont("NanumMyeongjo", 12)
-            c.setFillColor(subtitle_color)
-            c.drawString(50, 720, "각 제품별로 감정 분석 결과를 시각화한 차트입니다.")
-
-            c.setStrokeColor(line_color)
-            c.setLineWidth(2)
-            c.line(50, 715, 550, 715)
 
     c.save()
     print(f"PDF가 '{output_path}'에 저장되었습니다.")
-
-
 
 
 
