@@ -228,6 +228,7 @@ CORS_ALLOWED_ORIGINS = [
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",  # React 개발 서버
     "https://verynicetomato.site",    # 프로덕션 서버
+    'https://reviewlens.netlify.app',
 ]
 
 CORS_ALLOW_CREDENTIALS = True
